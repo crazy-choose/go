@@ -11,22 +11,30 @@ type Map[K comparable, V any] struct {
 	count int64
 }
 
-// Save 存储键值对，如果键不存在则计数器加1
-func (cm *Map[K, V]) Save(key K, value V) {
-	_, loaded := cm.m.LoadOrStore(key, value)
-	if !loaded { // 新元素
-		atomic.AddInt64(&cm.count, 1)
-	}
+// Store 存储值的副本的指针，即使传入值类型也会创建副本
+func (cm *Map[K, V]) Store(key K, value V) {
+	// 创建值的副本并存储其指针
+	copier := value // 强制创建副本（即使 value 是值类型）
+	cm.m.Store(key, &copier)
+	atomic.AddInt64(&cm.count, 1)
 }
 
-// Qry 查询键对应的值，如果键不存在则返回零值和 false
-func (cm *Map[K, V]) Qry(key K) (V, bool) {
+// StorePtr 直接存储指针（谨慎使用，确保指针有效）
+func (cm *Map[K, V]) StorePtr(key K, ptr *V) {
+	if ptr == nil {
+		return
+	}
+	cm.m.Store(key, ptr)
+	atomic.AddInt64(&cm.count, 1)
+}
+
+// Qry 查询键对应的值的指针，如果键不存在则返回 nil 和 false
+func (cm *Map[K, V]) Qry(key K) (*V, bool) {
 	value, loaded := cm.m.Load(key)
 	if !loaded {
-		var zero V
-		return zero, false
+		return nil, false
 	}
-	return value.(V), true
+	return value.(*V), true
 }
 
 // Delete 删除键值对，如果键存在则计数器减1
@@ -35,6 +43,15 @@ func (cm *Map[K, V]) Delete(key K) {
 		cm.m.Delete(key)
 		atomic.AddInt64(&cm.count, -1)
 	}
+}
+
+// Clean 清空所有键值对
+func (cm *Map[K, V]) Clean() {
+	cm.m.Range(func(key, value any) bool {
+		cm.m.Delete(key)
+		return true
+	})
+	atomic.StoreInt64(&cm.count, 0)
 }
 
 // Len 返回 map 中元素的数量
@@ -47,14 +64,14 @@ func (cm *Map[K, V]) Empty() bool {
 	return atomic.LoadInt64(&cm.count) <= 0
 }
 
-// AnyMap 将 map 转换为普通的 map[K]V，返回副本
-func (cm *Map[K, V]) AnyMap() map[any]V {
+// AnyMap 将 map 转换为普通的 map[K]*V，返回指针的副本
+func (cm *Map[K, V]) AnyMap() map[any]*V {
 	if atomic.LoadInt64(&cm.count) <= 0 {
 		return nil
 	}
-	ret := make(map[any]V)
+	ret := make(map[any]*V)
 	cm.m.Range(func(key, value any) bool {
-		ret[key.(K)] = value.(V)
+		ret[key] = value.(*V)
 		return true
 	})
 	return ret
