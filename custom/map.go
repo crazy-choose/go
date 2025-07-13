@@ -64,14 +64,28 @@ func (cm *Map[K, V]) Empty() bool {
 	return atomic.LoadInt64(&cm.count) <= 0
 }
 
-// AnyMap 将 map 转换为普通的 map[K]*V，返回指针的副本
-func (cm *Map[K, V]) AnyMap() map[any]*V {
+// Map 将 map 转换为普通的 map[K]*V，返回指针的副本
+func (cm *Map[K, V]) Map() (ret map[K]*V) {
 	if atomic.LoadInt64(&cm.count) <= 0 {
 		return nil
 	}
-	ret := make(map[any]*V)
+	ret = make(map[K]*V)
 	cm.m.Range(func(key, value any) bool {
-		ret[key] = value.(*V)
+		// 将 key 转换为 K 类型
+		ret[key.(K)] = value.(*V)
+		return true
+	})
+	return ret
+}
+
+func (cm *Map[K, V]) List() (ret []*V) {
+	if atomic.LoadInt64(&cm.count) <= 0 {
+		return nil
+	}
+	ret = make([]*V, 0)
+	cm.m.Range(func(key, value any) bool {
+		// 将 key 转换为 K 类型
+		ret = append(ret, value.(*V))
 		return true
 	})
 	return ret
