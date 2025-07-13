@@ -29,7 +29,10 @@ func InitPg(key string, opt meta.Postgres) bool {
 		PreferSimpleProtocol: true,
 		DSN:                  genDSN(opt), // DSN data source name
 	}
-	if db, err := gorm.Open(postgres.New(pgConfig)); err != nil {
+	if db, err := gorm.Open(postgres.New(pgConfig), &gorm.Config{
+		DisableAutomaticPing:   true,
+		SkipDefaultTransaction: true,
+	}); err != nil {
 		log.Error(err.Error())
 		return false
 	} else {
