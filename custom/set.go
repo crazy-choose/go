@@ -14,3 +14,8 @@ func (s Set[T]) Add(key T) {
 func (s Set[T]) Del(key T) {
 	delete(s, key)
 }
+
+// 获取集合的元素数量
+func (s Set[T]) Len() int {
+	return len(s)
+}
