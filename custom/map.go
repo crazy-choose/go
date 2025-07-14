@@ -78,7 +78,20 @@ func (cm *Map[K, V]) Map() (ret map[K]*V) {
 	return ret
 }
 
-func (cm *Map[K, V]) List() (ret []*V) {
+func (cm *Map[K, V]) KeyList() (ret []K) {
+	if atomic.LoadInt64(&cm.count) <= 0 {
+		return nil
+	}
+	ret = make([]K, 0)
+	cm.m.Range(func(key, value any) bool {
+		// 将 key 转换为 K 类型
+		ret = append(ret, key.(K))
+		return true
+	})
+	return ret
+}
+
+func (cm *Map[K, V]) ValList() (ret []*V) {
 	if atomic.LoadInt64(&cm.count) <= 0 {
 		return nil
 	}
