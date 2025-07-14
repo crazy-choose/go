@@ -11,7 +11,7 @@ import (
 var (
 	cfg        map[string]meta.Redis
 	rcm        map[string]*redis.Client // rds 连接map
-	rc         *redis.Client            //默认的链接
+	rc         *redis.Client            // 默认的链接
 	CTX        context.Context          // rds 上下文
 	ExpireTime = 86400 * time.Second
 )

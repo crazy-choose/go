@@ -30,8 +30,9 @@ func InitPg(key string, opt meta.Postgres) bool {
 		DSN:                  genDSN(opt), // DSN data source name
 	}
 	if db, err := gorm.Open(postgres.New(pgConfig), &gorm.Config{
-		DisableAutomaticPing:   true,
-		SkipDefaultTransaction: true,
+		SkipDefaultTransaction: true, // 跳过默认事务，提高批量操作性能
+		PrepareStmt:            true, // 缓存预编译语句，减少SQL解析时间
+		CreateBatchSize:        1000, // 批量插入时的最大记录数
 	}); err != nil {
 		log.Error(err.Error())
 		return false
