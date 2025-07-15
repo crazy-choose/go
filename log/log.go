@@ -1,53 +1,61 @@
 package log
 
 import (
-	"fmt"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"os"
+	"sync"
 	"time"
 )
 
 var (
 	sugaredLogger *zap.SugaredLogger
 	atomicLevel   zap.AtomicLevel
-	ioWrite       *lumberjack.Logger
+	once          sync.Once
 )
 
-func init() {
-	Initialize(false)
+// defaultEncoderConfig 默认的Encoder配置
+var defaultEncoderConfig = zapcore.EncoderConfig{
+	MessageKey:     "message",
+	LevelKey:       "level",
+	TimeKey:        "time",
+	NameKey:        "logger",
+	CallerKey:      "caller",
+	StacktraceKey:  "stacktrace",
+	LineEnding:     zapcore.DefaultLineEnding,
+	EncodeLevel:    zapcore.CapitalLevelEncoder, //zapcore.CapitalColorLevelEncoder,
+	EncodeTime:     CustomTimeEncoder,
+	EncodeDuration: zapcore.SecondsDurationEncoder,
+	EncodeCaller:   zapcore.FullCallerEncoder,
 }
 
-// Initialize 默认控制台输出, 如果需要文件输出, 请调用 Initialize(true)
-func Initialize(ioFile bool) {
-	encoderCfg := zapcore.EncoderConfig{
-		MessageKey:    "message",
-		LevelKey:      "level",
-		TimeKey:       "time",
-		NameKey:       "logger",
-		CallerKey:     "caller",
-		StacktraceKey: "stacktrace",
-		LineEnding:    zapcore.DefaultLineEnding,
-		EncodeLevel:   zapcore.CapitalColorLevelEncoder,
-		//EncodeLevel:    zapcore.CapitalLevelEncoder,
-		EncodeTime:     customTimeEncoder,
-		EncodeDuration: zapcore.SecondsDurationEncoder,
-		EncodeCaller:   zapcore.ShortCallerEncoder,
-	}
+func init() {
+	Initialize(defaultEncoderConfig)
+}
 
-	// define default level as debug level
-	atomicLevel = zap.NewAtomicLevel()
-	atomicLevel.SetLevel(zapcore.DebugLevel)
+// Initialize 初始化日志系统，可传入自定义的EncoderConfig
+func Initialize(encoderCfg zapcore.EncoderConfig) {
+	once.Do(func() {
+		// 定义默认级别为debug
+		atomicLevel = zap.NewAtomicLevel()
+		atomicLevel.SetLevel(zapcore.DebugLevel)
 
-	core := zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), os.Stdout, atomicLevel)
-	if ioFile {
-		core = zapcore.NewCore(zapcore.NewConsoleEncoder(encoderCfg), getLogWriter(), atomicLevel)
-	}
-	logger := zap.New(core)
-	logger = logger.WithOptions(zap.AddCallerSkip(1))
-	logger = logger.WithOptions(zap.AddCaller())
-	sugaredLogger = logger.Sugar()
+		core := zapcore.NewCore(
+			zapcore.NewConsoleEncoder(encoderCfg),
+			os.Stdout,
+			atomicLevel,
+		)
+
+		logger := zap.New(core)
+		logger = logger.WithOptions(zap.AddCallerSkip(1))
+		logger = logger.WithOptions(zap.AddCaller())
+		sugaredLogger = logger.Sugar()
+	})
+}
+
+// 自定义日志输出时间格式
+func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+	enc.AppendString(t.Format("2006/01/02 15:04:05.000"))
 }
 
 func Logger() *zap.Logger {
@@ -58,12 +66,20 @@ func SetLevel(level zapcore.Level) {
 	atomicLevel.SetLevel(level)
 }
 
-func Fatal(template string, args ...interface{}) {
-	sugaredLogger.Fatalf(template, args...)
+func Info(template string, args ...interface{}) {
+	sugaredLogger.Infof(template, args...)
+}
+
+func Debug(template string, args ...interface{}) {
+	sugaredLogger.Debugf(template, args...)
 }
 
 func Error(template string, args ...interface{}) {
 	sugaredLogger.Errorf(template, args...)
+}
+
+func Fatal(template string, args ...interface{}) {
+	sugaredLogger.Fatalf(template, args...)
 }
 
 func Panic(template string, args ...interface{}) {
@@ -73,34 +89,3 @@ func Panic(template string, args ...interface{}) {
 func Warn(template string, args ...interface{}) {
 	sugaredLogger.Warnf(template, args...)
 }
-
-func Info(template string, args ...interface{}) {
-	sugaredLogger.Infof(template, args...)
-}
-
-func Debug(template string, args ...interface{}) {
-	sugaredLogger.Debugf(template, args...)
-}
-
-func Rotate() {
-	fmt.Println("logger.Rotate....")
-	ioWrite.Rotate()
-}
-
-// 自定义日志输出时间格式
-func customTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendString(t.Format("2006/01/02 15:04:05.000000"))
-}
-
-func getLogWriter() zapcore.WriteSyncer {
-	lumberJackLogger := &lumberjack.Logger{
-		Filename:   defLogName(),
-		MaxSize:    1024,  //MB
-		MaxBackups: 0,     //文件数量 -0 无限制
-		MaxAge:     0,     //保留时间 -0 永久保存
-		Compress:   false, //压缩
-	}
-	ioWrite = lumberJackLogger
-	return zapcore.AddSync(ioWrite)
-}
-
