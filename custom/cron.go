@@ -1,28 +1,27 @@
-package cron
+package custom
 
 import (
-	"fmt"
 	"github.com/crazy-choose/go/log"
 	"github.com/robfig/cron/v3"
 	"os"
 	"time"
 )
 
-type CustomCron struct {
+type Cron struct {
 	cron      *cron.Cron
 	entryMap  []cron.EntryID
 	entryComm []string
 }
 
-var impl *CustomCron
+var impl *Cron
 
-func NewCron() *CustomCron {
+func NewCron() *Cron {
 	nyc, err := time.LoadLocation("Asia/Shanghai")
 	if err != nil {
 		return nil
 	}
 	_cron := cron.New(cron.WithSeconds(), cron.WithLocation(nyc))
-	impl = &CustomCron{
+	impl = &Cron{
 		cron:      _cron,
 		entryMap:  make([]cron.EntryID, 0),
 		entryComm: make([]string, 0),
@@ -31,18 +30,18 @@ func NewCron() *CustomCron {
 	return impl
 }
 
-func Impl() *CustomCron {
+func Impl() *Cron {
 	if impl == nil {
 		NewCron()
 	}
 	return impl
 }
 
-func (impl *CustomCron) AddFunc(f func(), command string) {
+func (impl *Cron) AddFunc(f func(), command string) {
 	if impl.cron != nil {
 		c, e := impl.cron.AddFunc(command, f)
 		if e != nil {
-			log.Info("CustomCron AddFun err:", e)
+			log.Info("Cron AddFun err:", e)
 			os.Exit(0)
 		}
 		impl.entryMap = append(impl.entryMap, c)
@@ -50,22 +49,17 @@ func (impl *CustomCron) AddFunc(f func(), command string) {
 	}
 }
 
-func (impl *CustomCron) Start() {
+func (impl *Cron) Start() {
 	impl.cron.Start()
-	log.Info("[ CustomCron ] Start...")
+	log.Info("[ Cron ] Start...")
 }
 
-func (impl *CustomCron) Stop() {
+func (impl *Cron) Stop() {
 	impl.cron.Stop()
-	log.Info("[ CustomCron ] Stop...")
+	log.Info("[ Cron ] Stop...")
 }
 
-func (impl *CustomCron) Print() {
-	fmt.Printf("[CustomCron]entryComm:%v", impl.entryComm)
-	fmt.Printf("[CustomCron]entryMap:%v", impl.entryMap)
-}
-
-func (impl *CustomCron) Log() {
-	log.Info("[CustomCron]entryComm:%v", impl.entryComm)
-	log.Info("[CustomCron]entryMap:%v", impl.entryMap)
+func (impl *Cron) Log() {
+	log.Info("[Cron]entryComm:%v", impl.entryComm)
+	log.Info("[Cron]entryMap:%v", impl.entryMap)
 }

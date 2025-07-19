@@ -104,7 +104,7 @@ func (cm *Map[K, V]) ValList() (ret []*V) {
 	return ret
 }
 
-// M 返回原始的 sync.Map（谨慎使用，可能破坏计数器一致性）
-func (cm *Map[K, V]) M() sync.Map {
-	return cm.m
-}
+// M 方法已移除，避免外部直接操作 sync.Map，保证计数器一致性
+//func (cm *Map[K, V]) M() sync.Map {
+//	return cm.m
+//}

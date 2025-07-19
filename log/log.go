@@ -26,7 +26,7 @@ var defaultEncoderConfig = zapcore.EncoderConfig{
 	EncodeLevel:    zapcore.CapitalLevelEncoder, //zapcore.CapitalColorLevelEncoder,
 	EncodeTime:     CustomTimeEncoder,
 	EncodeDuration: zapcore.SecondsDurationEncoder,
-	EncodeCaller:   zapcore.FullCallerEncoder,
+	EncodeCaller:   zapcore.ShortCallerEncoder,
 }
 
 func init() {
@@ -53,7 +53,7 @@ func Initialize(encoderCfg zapcore.EncoderConfig) {
 	})
 }
 
-// 自定义日志输出时间格式
+// CustomTimeEncoder 自定义日志输出时间格式
 func CustomTimeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
 	enc.AppendString(t.Format("2006/01/02 15:04:05.000"))
 }
