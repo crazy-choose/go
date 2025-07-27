@@ -151,10 +151,8 @@ func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, d
 	switch eventType {
 	case EventOpenAllow:
 		triggerTime = eventTime.Add(dur)
-	case EventCloseProhibit:
+	case EventCloseProhibit, EventForceClose:
 		triggerTime = eventTime.Add(-dur)
-	case EventForceClose:
-		triggerTime = eventTime
 	default:
 		return fmt.Errorf("unknown event type: %d", eventType)
 	}
