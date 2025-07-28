@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"encoding/json"
 	"fmt"
-	"github.com/crazy-choose/go/log"
 	"os"
 	"sync"
 	"time"
@@ -215,8 +214,6 @@ func (ttm *TimeEvent) fireCallbacks(key string, eventType int) {
 	}
 	// 异步触发回调
 	cb(eventType)
-	log.Debug("[TimeEvent],key:%s, et:%v cb trigger")
-
 }
 
 // 事件处理循环
