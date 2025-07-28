@@ -4,6 +4,7 @@ import (
 	"container/heap"
 	"encoding/json"
 	"fmt"
+	"github.com/crazy-choose/go/log"
 	"os"
 	"sync"
 	"time"
@@ -114,7 +115,7 @@ func (ttm *TimeEvent) Stop() {
 }
 
 // AddEvent 添加事件并注册回调
-func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, dur time.Duration, callback func(int)) error {
+func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, dur time.Duration, cb func(int)) error {
 	ttm.mu.Lock()
 	defer ttm.mu.Unlock()
 
@@ -127,14 +128,13 @@ func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, d
 	}
 
 	// 注册回调函数（支持多个回调）
-	if callback != nil {
+	if cb != nil {
 		ttm.callbackMu.Lock()
-		//ttm.callbacks[key] = append(ttm.callbacks[key], callback)
 		m, ok := ttm.callbacks[key]
 		if !ok {
 			m = make(map[int]func(int))
 		}
-		m[eventType] = callback
+		m[eventType] = cb
 		ttm.callbacks[key] = m
 		ttm.callbackMu.Unlock()
 	}
@@ -204,17 +204,18 @@ func (ttm *TimeEvent) fireCallbacks(key string, eventType int) {
 	ttm.callbackMu.RLock()
 	defer ttm.callbackMu.RUnlock()
 
-	callbacks, exists := ttm.callbacks[key]
+	cbs, exists := ttm.callbacks[key]
 	if !exists {
 		return
 	}
 
-	cb, ok := callbacks[eventType]
+	cb, ok := cbs[eventType]
 	if !ok {
 		return
 	}
 	// 异步触发回调
-	go cb(eventType)
+	cb(eventType)
+	log.Debug("[TimeEvent],key:%s, et:%v cb trigger")
 
 }
 
