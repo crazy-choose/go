@@ -63,7 +63,7 @@ type TimeEvent struct {
 	eventChan    chan *ScheduledEvent
 	stopChan     chan struct{}
 	running      bool
-	callbacks    map[string][]func(int) // 支持多个回调
+	callbacks    map[string]map[int]func(int) // 支持多个回调
 	isIO         bool
 	maxQueueSize int
 }
@@ -75,7 +75,7 @@ func NewTimeEvent(isIO bool) *TimeEvent {
 		eventChan:    make(chan *ScheduledEvent, 1024), // 缓冲通道，处理高并发
 		stopChan:     make(chan struct{}),
 		running:      false,
-		callbacks:    make(map[string][]func(int)),
+		callbacks:    make(map[string]map[int]func(int)),
 		isIO:         isIO,
 		maxQueueSize: MaxEventQueueSize,
 	}
@@ -129,7 +129,13 @@ func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, d
 	// 注册回调函数（支持多个回调）
 	if callback != nil {
 		ttm.callbackMu.Lock()
-		ttm.callbacks[key] = append(ttm.callbacks[key], callback)
+		//ttm.callbacks[key] = append(ttm.callbacks[key], callback)
+		m, ok := ttm.callbacks[key]
+		if !ok {
+			m = make(map[int]func(int))
+		}
+		m[eventType] = callback
+		ttm.callbacks[key] = m
 		ttm.callbackMu.Unlock()
 	}
 
@@ -173,7 +179,9 @@ func (ttm *TimeEvent) AddEvent(key string, eventType int, eventTime time.Time, d
 		}
 	} else {
 		// 过期事件直接触发回调
-		ttm.fireCallbacks(key, eventType)
+		time.AfterFunc(5*time.Second, func() {
+			ttm.fireCallbacks(key, eventType)
+		})
 	}
 
 	return nil
@@ -196,19 +204,18 @@ func (ttm *TimeEvent) fireCallbacks(key string, eventType int) {
 	ttm.callbackMu.RLock()
 	defer ttm.callbackMu.RUnlock()
 
-	if callbacks, exists := ttm.callbacks[key]; exists {
-		for _, callback := range callbacks {
-			// 异步触发回调
-			go func(cb func(int)) {
-				defer func() {
-					if r := recover(); r != nil {
-						fmt.Printf("Callback panic for key %s: %v\n", key, r)
-					}
-				}()
-				cb(eventType)
-			}(callback)
-		}
+	callbacks, exists := ttm.callbacks[key]
+	if !exists {
+		return
 	}
+
+	cb, ok := callbacks[eventType]
+	if !ok {
+		return
+	}
+	// 异步触发回调
+	go cb(eventType)
+
 }
 
 // 事件处理循环
